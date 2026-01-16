@@ -13,3 +13,4 @@ Route::delete('/students/{id}', [StudentController::class, 'destroy'])->name('st
 
 Route::get('/report', [StudentController::class, 'reportCard'])->name('students.report');
 Route::post('/grades', [StudentController::class, 'assignGrade'])->name('grades.store');
+Route::get('/seed', [StudentController::class, 'seed'])->name('db.seed');
