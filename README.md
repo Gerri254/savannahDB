@@ -23,12 +23,12 @@ SavannahDB is a custom Relational Database Management System built from scratch 
 SavannahDB follows a modular layered architecture, separating the Query Interface from the Storage Engine.
 
 ```mermaid
-graph TD;
-    User[User / Laravel App] -->|SQL Query| REPL[Console REPL / Controller];
-    REPL -->|Parse| Parser[Database.php (SQL Parser)];
-    Parser -->|Command| Engine[Table.php (Storage Engine)];
-    Engine -->|Lock & Seek| Index[In-Memory Index (RAM)];
-    Engine -->|Read/Write| File[(NDJSON Storage File)];
+graph TD
+    User("User / Laravel App") -->|SQL Query| REPL("Console REPL / Controller")
+    REPL -->|Parse| Parser("Database.php - SQL Parser")
+    Parser -->|Command| Engine("Table.php - Storage Engine")
+    Engine -->|Lock & Seek| Index("In-Memory Index - RAM")
+    Engine -->|Read/Write| File[("NDJSON Storage File")]
 ```
 
 ---
