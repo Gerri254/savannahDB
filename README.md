@@ -8,7 +8,7 @@ SavannahDB is a custom Relational Database Management System built from scratch 
 
 ## Key Features
 
-*   **⚡ O(1) Performance:**
+*   **O(1) Performance:**
     *   **Writes:** Append-only log architecture (NDJSON) ensures constant-time inserts.
     *   **Reads:** In-Memory Byte-Offset Indexing allows `O(1)` Primary Key lookups via `fseek`.
 *   **ACID Compliance (Partial):** Uses `flock()` (File Locking) for atomic operations and concurrent write safety.
