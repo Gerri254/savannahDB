@@ -16,6 +16,7 @@ class StudentController extends Controller
         
         // Ensure table exists
         $this->db->execute("CREATE TABLE students");
+        $this->db->execute("CREATE TABLE grades");
     }
 
     public function index()
@@ -49,5 +50,40 @@ class StudentController extends Controller
     {
         $this->db->execute("DELETE FROM students WHERE id = $id");
         return redirect()->route('students.index');
+    }
+
+    public function assignGrade(Request $request)
+    {
+        $request->validate([
+            'student_id' => 'required|numeric',
+            'subject' => 'required|string',
+            'score' => 'required|numeric',
+        ]);
+
+        $studentId = $request->input('student_id');
+        $subject = $request->input('subject');
+        $score = $request->input('score');
+
+        $this->db->execute("INSERT INTO grades (student_id, subject, score) VALUES ($studentId, '$subject', $score)");
+
+        return redirect()->route('students.report');
+    }
+
+    public function reportCard()
+    {
+        // Demonstration of JOIN and ORDER BY
+        // We join students (for name) and grades (for subject/score)
+        $sql = "SELECT * FROM students JOIN grades ON students.id = grades.student_id ORDER BY score DESC";
+        $report = $this->db->execute($sql);
+
+        if (!is_array($report)) {
+            $report = [];
+        }
+
+        // We also need students for the assignment dropdown
+        $students = $this->db->execute("SELECT * FROM students");
+        if (!is_array($students)) $students = [];
+
+        return view('students.report', compact('report', 'students'));
     }
 }
