@@ -34,14 +34,48 @@ class StudentController extends Controller
     {
         $request->validate([
             'name' => 'required|string',
-            'score' => 'required|numeric'
+            'class' => 'required|string',
+            'phone' => 'required|string'
         ]);
 
         $name = $request->input('name');
-        $score = $request->input('score');
+        $class = $request->input('class');
+        $phone = $request->input('phone');
 
         // Manual SQL string interpolation
-        $this->db->execute("INSERT INTO students (name, score) VALUES ('$name', $score)");
+        $this->db->execute("INSERT INTO students (name, class, phone) VALUES ('$name', '$class', '$phone')");
+
+        return redirect()->route('students.index');
+    }
+
+    public function edit($id)
+    {
+        // Fetch specific student
+        $result = $this->db->execute("SELECT * FROM students WHERE id = $id");
+        
+        if (empty($result) || !isset($result[0])) {
+            return redirect()->route('students.index')->with('error', 'Student not found');
+        }
+
+        $student = $result[0];
+        return view('students.edit', compact('student'));
+    }
+
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'name' => 'required|string',
+            'class' => 'required|string',
+            'phone' => 'required|string'
+        ]);
+
+        $name = $request->input('name');
+        $class = $request->input('class');
+        $phone = $request->input('phone');
+
+        // Execute UPDATE command
+        // Note: Our simple parser expects UPDATE table SET col=val, col2=val WHERE id=X
+        $this->db->execute("UPDATE students SET name='$name', class='$class', phone='$phone' WHERE id=$id");
 
         return redirect()->route('students.index');
     }
@@ -99,22 +133,59 @@ class StudentController extends Controller
 
         // 2. Loop and Insert
         $subjects = ['Mathematics', 'Science', 'History', 'Physics', 'Literature'];
+        $classes = ['10A', '10B', '11A', '12C'];
 
         for ($i = 1; $i <= 20; $i++) {
-            $score = rand(60, 99);
+            $class = $classes[array_rand($classes)];
+            $phone = "07" . rand(10000000, 99999999);
             // Insert Student
-            // Note: In our simple engine, IDs auto-increment. 
-            // Since table is empty, this student will get ID = $i (roughly, depending on engine state).
-            $this->db->execute("INSERT INTO students (name, score) VALUES ('Student {$i}', $score)");
+            $this->db->execute("INSERT INTO students (name, class, phone) VALUES ('Student {$i}', '$class', '$phone')");
 
-            // Insert Grade for this student (using $i as ID assumption for fresh table)
-            // In a more complex engine we'd fetch the last insert ID.
+            // Insert Grade for this student
             $subj = $subjects[array_rand($subjects)];
             $gradeScore = rand(70, 100);
             
             $this->db->execute("INSERT INTO grades (student_id, subject, score) VALUES ($i, '$subj', $gradeScore)");
         }
 
+        return redirect()->route('students.report');
+    }
+
+    // --- Grade Management ---
+
+    public function editGrade($id)
+    {
+        $result = $this->db->execute("SELECT * FROM grades WHERE id = $id");
+        if (empty($result) || !isset($result[0])) {
+            return redirect()->route('students.report');
+        }
+        
+        $grade = $result[0];
+        
+        // Fetch student name for context
+        $studentRes = $this->db->execute("SELECT * FROM students WHERE id = " . $grade['student_id']);
+        $grade['student_name'] = $studentRes[0]['name'] ?? 'Unknown Student';
+
+        return view('grades.edit', compact('grade'));
+    }
+
+    public function updateGrade(Request $request, $id)
+    {
+        $request->validate([
+            'subject' => 'required|string',
+            'score' => 'required|numeric'
+        ]);
+        
+        $subj = $request->input('subject');
+        $score = $request->input('score');
+        
+        $this->db->execute("UPDATE grades SET subject='$subj', score=$score WHERE id=$id");
+        return redirect()->route('students.report');
+    }
+
+    public function destroyGrade($id)
+    {
+        $this->db->execute("DELETE FROM grades WHERE id=$id");
         return redirect()->route('students.report');
     }
 }

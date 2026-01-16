@@ -218,9 +218,26 @@ class Table
 
     public function delete(int|string $id): bool
     {
-        // Phase 3: RAM-only delete (Soft Delete)
-        if (isset($this->index[$id])) {
-            unset($this->index[$id]);
+        if (!isset($this->index[$id])) {
+            return false;
+        }
+
+        $deleted = false;
+
+        $this->atomicProcess(function (array $row) use ($id, &$deleted) {
+            if (isset($row[$this->primaryKey]) && $row[$this->primaryKey] == $id) {
+                $deleted = true;
+                return null; // Return null to remove the row from the file
+            }
+            // Filter out other already soft-deleted items if any exist in index mismatch
+            if (!isset($this->index[$row[$this->primaryKey]]) && $row[$this->primaryKey] != $id) {
+                 return null;
+            }
+            return $row;
+        });
+
+        if ($deleted) {
+            $this->rebuildIndex();
             return true;
         }
         return false;

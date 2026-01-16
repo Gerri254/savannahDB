@@ -63,7 +63,8 @@
                         <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Student Name</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Subject</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Score</th>
-                        <th scope="col" class="px-6 py-3 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Internal ID</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Internal ID</th>
+                        <th scope="col" class="px-6 py-3 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-slate-200">
@@ -80,8 +81,24 @@
                                 {{ $row['score'] }}
                             </span>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-slate-400 font-mono">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-400 font-mono">
                             STU-{{ $row['student_id'] }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                             <a href="{{ route('grades.edit', $row['id']) }}" class="text-slate-400 hover:text-indigo-600 transition-colors inline-block" title="Edit">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+                                </svg>
+                            </a>
+                            <form action="{{ route('grades.destroy', $row['id']) }}" method="POST" onsubmit="return confirm('Delete this grade?');" class="inline-block">
+                                @csrf
+                                @method('DELETE')
+                                <button class="text-slate-400 hover:text-red-600 transition-colors" title="Delete">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                                      <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                                    </svg>
+                                </button>
+                            </form>
                         </td>
                     </tr>
                     @empty
@@ -103,29 +120,74 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const ctx = document.getElementById('gradesChart');
-        const data = @json($grades);
+        const rawData = @json($grades);
+
+        // 1. Extract Unique Student Names for X-Axis Labels
+        const studentNames = [...new Set(rawData.map(item => item.name))];
+
+        // 2. Extract Unique Subjects
+        const subjects = [...new Set(rawData.map(item => item.subject))];
+
+        // 3. Define a color palette for subjects
+        const colors = [
+            'rgba(99, 102, 241, 0.7)',  // Indigo
+            'rgba(16, 185, 129, 0.7)',  // Emerald
+            'rgba(245, 158, 11, 0.7)',  // Amber
+            'rgba(239, 68, 68, 0.7)',   // Red
+            'rgba(59, 130, 246, 0.7)',  // Blue
+            'rgba(139, 92, 246, 0.7)',  // Violet
+            'rgba(236, 72, 153, 0.7)'   // Pink
+        ];
+
+        // 4. Create Datasets (One per Subject)
+        const datasets = subjects.map((subject, index) => {
+            return {
+                label: subject,
+                backgroundColor: colors[index % colors.length],
+                borderColor: colors[index % colors.length].replace('0.7', '1'),
+                borderWidth: 1,
+                // Map scores to the student index. If student has no score for this subject, use null/0.
+                data: studentNames.map(name => {
+                    const record = rawData.find(r => r.name === name && r.subject === subject);
+                    return record ? record.score : null;
+                })
+            };
+        });
 
         new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: data.map(row => row.name),
-                datasets: [{
-                    label: 'Score',
-                    data: data.map(row => row.score),
-                    backgroundColor: 'rgba(99, 102, 241, 0.5)',
-                    borderColor: 'rgba(99, 102, 241, 1)',
-                    borderWidth: 1
-                }]
+                labels: studentNames,
+                datasets: datasets
             },
             options: {
                 scales: {
                     y: {
                         beginAtZero: true,
-                        max: 100
+                        max: 100,
+                        title: {
+                            display: true,
+                            text: 'Score'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Students'
+                        }
                     }
                 },
                 responsive: true,
-                maintainAspectRatio: false
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                    }
+                }
             }
         });
     });
